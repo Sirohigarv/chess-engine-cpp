@@ -213,39 +213,192 @@ string findking(){
     char filew ='?';
     char rankw ='?';
     
-    bool found = false;
     
-    for(int i=0;i<8 && !found;i++)
+    for(int i=0;i<8;i++)
     {
         for(int j=0;j<8;j++)
         {
             if (board[i][j] == 'k')
             {
                 fileb = 'a' + j;
-                rankb = '0' + 8 - i;
+                rankb = '0' + (8 - i);
             }
             if (board[i][j] == 'K')
             {
                 filew = 'a' + j;
-                rankw = '0' + 8 - i;
+                rankw = '0' + (8 - i);
             }
-            if(filew != '?' && fileb != '?')
-            {
-                found = true;
-                break;
-            }
+            
         }
     }
+    
     return string{filew, rankw, fileb, rankb};
 }
-bool issquareattacked(int row, int col, bool bywhite)
+bool isSquareAttacked(int row, int col, bool byWhite)
 {
+    
+    if (byWhite)
+    {
+        //pawns
+        if (row <= 5)
+        {
+            if (col > 0 && board[row + 1][col - 1] == 'P')
+                return true;
+            if (col < 7 && board[row + 1][col + 1] == 'P')
+                return true;
+        }
+        //knights
+        int knightmoves[8][2] = {{-2,-1},{-2,1},{2,-1},{2,1},{1,-2},{1,2},{-1,-2},{-1,2}};
+        for(auto& m : knightmoves)
+        {
+            int r = row + m[0];
+            int c = col + m[1];
+            if(r>= 0 && r<8 && c>=0 && c<8 && board[r][c]=='N')
+            {
+                return true;
+            }
+        }
+        //rook/partial queen
+        int rookdirs[4][2] = {{1,0},{0,1},{-1,0},{0,-1}};
+        for(auto& d: rookdirs)
+        {
+            int r = row + d[0];
+            int c = col + d[1];
+            while(r>=0 && r<8 && c>=0 && c<8 )
+            {
+                if(board[r][c]!='.')
+                {
+                    if(board[r][c]=='R' || board[r][c]=='Q')
+                    {
+                        return true;
+                    }
+                    break;
+                }
+                r+= d[0];
+                c+= d[1];
+            }
+        }
+        //bishop/partial queen
+        int bishopdirs[4][2] = {{1,1},{1,-1},{-1,1},{-1,-1}};
+        for(auto& d: bishopdirs)
+        {
+            int r = row + d[0];
+            int c = col + d[1];
+            while(r>=0 && r<8 && c>=0 && c<8 )
+            {
+                if(board[r][c]!='.')
+                {
+                    if(board[r][c]=='B' || board[r][c]=='Q')
+                    {
+                        return true;
+                    }
+                    break;
+                }
+                r+= d[0];
+                c+= d[1];
+            }
+        }
+        // king
+        int kingMoves[8][2] = {{-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}};
+        for (auto& m : kingMoves)
+        {
+            int r = row + m[0];
+            int c = col + m[1];
+            if (r >= 0 && r < 8 && c >= 0 && c < 8 && board[r][c] == 'K')
+                return true;
+        }
+        
+    }
+    else
+    {
+        //pawns
+        if (row >=2)
+        {
+            if (col > 0 && board[row - 1][col - 1] == 'p')
+                return true;
+            if (col < 7 && board[row - 1][col + 1] == 'p')
+                return true;
+        }
+        //knights
+        int knightmoves[8][2] = {{-2,-1},{-2,1},{2,-1},{2,1},{1,-2},{1,2},{-1,-2},{-1,2}};
+        for(auto& m : knightmoves)
+        {
+            int r = row + m[0];
+            int c = col + m[1];
+            if(r>= 0 && r<8 && c>=0 && c<8 && board[r][c]=='n')
+            {
+                return true;
+            }
+        }
+        //rook/partial queen
+        int rookdirs[4][2] = {{1,0},{0,1},{-1,0},{0,-1}};
+        for(auto& d: rookdirs)
+        {
+            int r = row + d[0];
+            int c = col + d[1];
+            while(r>=0 && r<8 && c>=0 && c<8 )
+            {
+                if(board[r][c]!='.')
+                {
+                    if(board[r][c]=='r' || board[r][c]=='q')
+                    {
+                        return true;
+                    }
+                    break;
+                }
+                r+= d[0];
+                c+= d[1];
+            }
+        }
+        //bishop/partial queen
+        int bishopdirs[4][2] = {{1,1},{1,-1},{-1,1},{-1,-1}};
+        for(auto& d: bishopdirs)
+        {
+            int r = row + d[0];
+            int c = col + d[1];
+            while(r>=0 && r<8 && c>=0 && c<8 )
+            {
+                if(board[r][c]!='.')
+                {
+                    if(board[r][c]=='b' || board[r][c]=='q')
+                    {
+                        return true;
+                    }
+                    break;
+                }
+                r+= d[0];
+                c+= d[1];
+            }
+        }
+        // king
+        int kingMoves[8][2] = {{-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}};
+        for (auto& m : kingMoves)
+        {
+            int r = row + m[0];
+            int c = col + m[1];
+            if (r >= 0 && r < 8 && c >= 0 && c < 8 && board[r][c] == 'k')
+                return true;
+        }
+    }
+
     return false;
 }
 
 bool iskingincheck(bool white)
 {
-    return false;
+    string kings = findking();
+    string kingsquare;
+    if(white)
+    {
+        kingsquare = kings.substr(0,2);
+    }
+    else
+    {
+        kingsquare = kings.substr(2,2);
+    }
+    auto [row,col] = squareToIndex(kingsquare);
+
+    return isSquareAttacked(row,col,!white); //by enemy piece, !white
 }
 
 bool legalmove(string move){
@@ -264,13 +417,12 @@ bool legalmove(string move){
 }
 
 //make moves
-void makemoves(string move){
-    
-    
+void makemoves(string move){ 
     
     int fr,fc,tr,tc;
     parseMove(move,fr,fc,tr,tc);
     char piece = board[fr][fc];
+    char destination = board[tr][tc];
     
     if(piece == '.'){
         cout<< "no piece on that square"<<endl;
@@ -295,6 +447,17 @@ void makemoves(string move){
     
     board[tr][tc] = piece;
     board[fr][fc] = '.';
+    
+    if(iskingincheck(whitetomove))
+    {
+        //undo the move
+        board[fr][fc] = piece;
+        board[tr][tc] = destination;
+        cout << "leaves king in check, ILLEGAL"<<endl;
+        return;
+    }
+
+    
     whitetomove=!whitetomove;
 
 }
