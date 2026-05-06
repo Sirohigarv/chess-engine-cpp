@@ -7,6 +7,7 @@ using namespace std;
 char board[8][8];
 bool whitetomove = true;
 
+
 void initialiseboard()
 {
     for(int i=0;i<8;i++)

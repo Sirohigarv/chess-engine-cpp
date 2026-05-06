@@ -1,10 +1,37 @@
 #include <iostream>
 using namespace std;
-
+#include <cmath>
 #include "moves.h"
 #include "board.h"
 #include "notation.h"
 #include "check.h"
+
+
+
+Move createMove(string move){
+    int fr,fc,tr,tc;
+    parseMove(move,fr,fc,tr,tc);
+
+    Move m;
+    m.fr = fr;
+    m.fc = fc;
+    m.tr = tr;
+    m.tc = tc;
+    m.movedPiece = board[fr][fc];
+    m.capturedPiece = board[tr][tc];
+
+    return m;
+}
+void make_Move(Move m){
+    board[m.tr][m.tc] = m.movedPiece;
+    board[m.fr][m.fc] = '.';
+}
+
+void undoMove(Move m){
+    board[m.fr][m.fc] = m.movedPiece;
+    board[m.tr][m.tc] = m.capturedPiece;
+}
+
 
 bool islegalpawn(string move){
     int fr,fc,tr,tc;
@@ -163,13 +190,32 @@ bool legalmove(string move){
     return false;
 }
 
+bool ispromotion(const Move &m)
+{
+    if(m.movedPiece == 'p' && m.tr == 7) return true;
+    if(m.movedPiece == 'P' && m.tr == 0) return true;
+    return false;
+}
+
+void promotePawn(const Move &m){
+    char promoteTo;
+
+    if(whitetomove){
+        promoteTo = 'Q'; 
+    } else {
+        promoteTo = 'q';
+    }
+
+    board[m.tr][m.tc] = promoteTo;
+}
+
+
 //make moves
 void makemoves(string move){ 
     
     int fr,fc,tr,tc;
-    parseMove(move,fr,fc,tr,tc);
-    char piece = board[fr][fc];
-    char destination = board[tr][tc];
+    Move m = createMove(move);
+    char piece = m.movedPiece;
     
     if(piece == '.'){
         cout<< "no piece on that square"<<endl;
@@ -192,19 +238,21 @@ void makemoves(string move){
         return;
     }
     
-    board[tr][tc] = piece;
-    board[fr][fc] = '.';
+    make_Move(m);
     
     if(iskingincheck(whitetomove))
     {
         //undo the move
-        board[fr][fc] = piece;
-        board[tr][tc] = destination;
+        undoMove(m);
         cout << "leaves king in check, ILLEGAL"<<endl;
         return;
     }
 
-    
+    if(ispromotion(m)){
+        promotePawn(m);
+    }
+
+
     whitetomove=!whitetomove;
 
 }

@@ -8,4 +8,4 @@ string findking();
 bool isSquareAttacked(int row, int col, bool byWhite);
 bool iskingincheck(bool white);
 
-#endif
+#endif 
