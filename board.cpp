@@ -1,12 +1,22 @@
 #include "board.h"
 
 #include <iostream>
+
+bool iskingincheck(bool white);
+
 using namespace std;
 
 
 char board[8][8];
 bool whitetomove = true;
 
+bool whiteKingsideCastle  = true;
+bool whiteQueensideCastle = true;
+bool blackKingsideCastle  = true;
+bool blackQueensideCastle = true;
+
+int enPassantRow = -1;
+int enPassantCol = -1;
 
 void initialiseboard()
 {
@@ -45,13 +55,21 @@ void initialiseboard()
     board[7][4] = 'K';
 }
 //print
-void printboard(){
-    for(int i = 0;i<8;i++)
-    {
-        for(int j=0;j<8;j++)
-        {
-            cout<< board[i][j];
-        }
-        cout << endl;
-    }
+void printboard() {
+    cout<< "\n   a b c d e f g h \n\n";
+    
+	for(int i = 0; i<8; i++)
+	{
+		cout << 8-i << "  ";
+		for(int j=0; j<8; j++)
+		{
+			cout<< board[i][j] << " ";
+		}
+		cout << " " << 8-i << "\n";
+	}
+	cout<< "\n   a b c d e f g h \n";
+	cout << (whitetomove ? "White" : "Black") << " to move";
+	if(iskingincheck(whitetomove)) cout << " [CHECK]";
+	cout << "\n\n";
+	
 }

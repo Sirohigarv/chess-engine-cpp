@@ -1,6 +1,8 @@
 #include "check.h"
 #include "board.h"
 #include "notation.h"
+#include <vector>
+#include "moves.h"
 
 string findking(){
     char fileb ='?';
@@ -195,4 +197,11 @@ bool iskingincheck(bool white)
     auto [row,col] = squareToIndex(kingsquare);
 
     return isSquareAttacked(row,col,!white); //by enemy piece, !white
+}
+
+int gameStatus() {
+    vector<Move> moves = generateLegalMoves(whitetomove);
+    if (!moves.empty()) return 0;
+    if (iskingincheck(whitetomove)) return 1; // checkmate
+    return 2; // stalemate
 }
