@@ -4,6 +4,7 @@
 #include "board.h"
 #include "moves.h"
 #include "check.h"
+#include "engine.h"
 
 using namespace std;
 
@@ -21,15 +22,25 @@ int main(){
         }
         if(status == 2)
         {
-            cout << "Stalemate! It's a draw.\n";
+            cout << "Stalemate! Draw...\n";
             break;
         }
 
-        string move;
-        cout << "Enter move: ";
-        cin >> move;
-
-        makemoves(move);
+        if(whitetomove)
+        {
+            string move;
+            cout << "Enter move: ";
+            cin >> move;
+ 
+            makemoves(move);
+        }
+        else{
+            cout << "Ai is thinking...\n";
+            Move aiMove = getBestMove(false, 3);
+            make_Move(aiMove);
+            if(ispromotion(aiMove)) promotePawn(aiMove);
+            whitetomove = !whitetomove;
+        }
     }
 
     return 0;

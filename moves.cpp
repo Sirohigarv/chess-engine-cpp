@@ -244,27 +244,27 @@ bool islegalking(string move){
 bool islegalcastle(string move) {
     int fr,fc,tr,tc;
     parseMove(move,fr,fc,tr,tc);
-    // White kingside
+    // White
     if (board[fr][fc]=='K' && fr==7 && fc==4) {
-        if (tc==6 && whiteKingsideCastle &&
+        if (tc==6 && tr==7 && whiteKingsideCastle &&
             board[7][5]=='.'&&board[7][6]=='.' &&
             !isSquareAttacked(7,4,false)&&
             !isSquareAttacked(7,5,false)&&
             !isSquareAttacked(7,6,false)) return true;
-        if (tc==2 && whiteQueensideCastle &&
+        if (tc==2 && tr==7 && whiteQueensideCastle &&
             board[7][3]=='.'&&board[7][2]=='.'&&board[7][1]=='.' &&
             !isSquareAttacked(7,4,false)&&
             !isSquareAttacked(7,3,false)&&
             !isSquareAttacked(7,2,false)) return true;
     }
-    // Black kingside
+    // Black
     if (board[fr][fc]=='k' && fr==0 && fc==4) {
-        if (tc==6 && blackKingsideCastle &&
+        if (tc==6 && tr==0 && blackKingsideCastle &&
             board[0][5]=='.'&&board[0][6]=='.' &&
             !isSquareAttacked(0,4,true)&&
             !isSquareAttacked(0,5,true)&&
             !isSquareAttacked(0,6,true)) return true;
-        if (tc==2 && blackQueensideCastle &&
+        if (tc==2 && tr==0 && blackQueensideCastle &&
             board[0][3]=='.'&&board[0][2]=='.'&&board[0][1]=='.' &&
             !isSquareAttacked(0,4,true)&&
             !isSquareAttacked(0,3,true)&&
@@ -329,15 +329,7 @@ bool ispromotion(const Move &m)
 }
 
 void promotePawn(const Move &m){
-    char promoteTo;
-
-    if(whitetomove){
-        promoteTo = 'Q'; 
-    } else {
-        promoteTo = 'q';
-    }
-
-    board[m.tr][m.tc] = promoteTo;
+    board[m.tr][m.tc] = (m.movedPiece == 'P') ? 'Q' : 'q';
 }
 
 
