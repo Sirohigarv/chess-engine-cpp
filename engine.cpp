@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "board.h"
 #include "moves.h"
+#include "notation.h"
 #include <climits>
 #include <unordered_map>
 #include <vector>
@@ -156,3 +157,85 @@ Move getBestMove(bool white, int depth) {
 //------------------------------------opening book------------------------------------------------------------------------// 
 unordered_map<string, vector<string>> openingBook;
 vector<string> moveHistory;
+
+// Each line is a full opening, 5 moves deep for both sides (10 half-moves), in from-square/to-square notation.
+// Castling is written as the king's move (e1g1, e8g8).
+static const vector<vector<string>> openingLines = {
+    // Ruy Lopez (Morphy Defence)
+    {"e2e4","e7e5","g1f3","b8c6","f1b5","a7a6","b5a4","g8f6","e1g1","f8e7"},
+    // Italian Game (Giuoco Piano)
+    {"e2e4","e7e5","g1f3","b8c6","f1c4","f8c5","c2c3","g8f6","d2d4","e5d4"},
+    // Scotch Game
+    {"e2e4","e7e5","g1f3","b8c6","d2d4","e5d4","f3d4","g8f6","d4c6","b7c6"},
+    // Petrov Defence
+    {"e2e4","e7e5","g1f3","g8f6","f3e5","d7d6","e5f3","f6e4","d2d4","d6d5"},
+    // Sicilian Najdorf
+    {"e2e4","c7c5","g1f3","d7d6","d2d4","c5d4","f3d4","g8f6","b1c3","a7a6"},
+    // French Defence (Classical)
+    {"e2e4","e7e6","d2d4","d7d5","b1c3","g8f6","c1g5","f8e7","e4e5","f6d7"},
+    // Caro-Kann (Classical)
+    {"e2e4","c7c6","d2d4","d7d5","b1c3","d5e4","c3e4","c8f5","e4g3","f5g6"},
+    // Queen's Gambit Declined
+    {"d2d4","d7d5","c2c4","e7e6","b1c3","g8f6","c1g5","f8e7","e2e3","e8g8"},
+    // Queen's Gambit Accepted
+    {"d2d4","d7d5","c2c4","d5c4","g1f3","g8f6","e2e3","e7e6","f1c4","c7c5"},
+    // Slav Defence
+    {"d2d4","d7d5","c2c4","c7c6","g1f3","g8f6","b1c3","d5c4","a2a4","c8f5"},
+    // London System
+    {"d2d4","d7d5","c1f4","g8f6","e2e3","e7e6","g1f3","c7c5","c2c3","b8c6"},
+    // King's Indian Defence
+    {"d2d4","g8f6","c2c4","g7g6","b1c3","f8g7","e2e4","d7d6","g1f3","e8g8"},
+    // Nimzo-Indian Defence
+    {"d2d4","g8f6","c2c4","e7e6","b1c3","f8b4","e2e3","e8g8","f1d3","d7d5"},
+    // English Opening (Reversed Sicilian)
+    {"c2c4","e7e5","b1c3","g8f6","g1f3","b8c6","g2g3","d7d5","c4d5","f6d5"},
+};
+
+// key = moves played so far joined by spaces ("" for the start position), value = possible next moves
+static string historyKey(const vector<string>& moves, size_t count) {
+    string key;
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0) key += ' ';
+        key += moves[i];
+    }
+    return key;
+}
+
+void initOpeningBook() {
+    srand(static_cast<unsigned>(time(nullptr)));
+    openingBook.clear();
+    moveHistory.clear();
+    for (const auto& line : openingLines) {
+        for (size_t i = 0; i < line.size(); i++) {
+            vector<string>& replies = openingBook[historyKey(line, i)];
+            if (find(replies.begin(), replies.end(), line[i]) == replies.end())
+                replies.push_back(line[i]);
+        }
+    }
+}
+
+string moveToString(const Move& m) {
+    return indexToSquare(m.fr, m.fc) + indexToSquare(m.tr, m.tc);
+}
+
+// call after every move actually played on the board (human or engine)
+void recordMove(const string& move) {
+    moveHistory.push_back(move.substr(0, 4));
+}
+
+// returns true and fills 'out' if the current position is in the book
+bool getBookMove(bool white, Move& out) {
+    auto it = openingBook.find(historyKey(moveHistory, moveHistory.size()));
+    if (it == openingBook.end() || it->second.empty()) return false;
+
+    const string& choice = it->second[rand() % it->second.size()];
+
+    // only play the book move if it is legal in the current position
+    for (const Move& m : generateLegalMoves(white)) {
+        if (moveToString(m) == choice) {
+            out = m;
+            return true;
+        }
+    }
+    return false;
+}

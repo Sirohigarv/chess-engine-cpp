@@ -90,6 +90,7 @@ int main() {
     }
 
     initialiseboard();
+    initOpeningBook();
 
     
     bool pieceSelected = false;
@@ -136,6 +137,7 @@ int main() {
             bool moved = false;
             for (const Move& m : legalMoves) {
                 if (m.tr == row && m.tc == col) {
+                    recordMove(moveToString(m));
                     make_Move(m);
                     if (ispromotion(m)) promotePawn(m);
                     whitetomove    = !whitetomove;
@@ -207,7 +209,10 @@ int main() {
                 gameOver = true;
                 window.setTitle("Chess Engine - game over");
             } else {
-                const Move best = getBestMove(whitetomove, SEARCH_DEPTH);
+                Move best;
+                if (!getBookMove(whitetomove, best))
+                    best = getBestMove(whitetomove, SEARCH_DEPTH);
+                recordMove(moveToString(best));
                 make_Move(best);
                 if (ispromotion(best)) promotePawn(best);
                 whitetomove = !whitetomove;

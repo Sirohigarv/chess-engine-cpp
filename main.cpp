@@ -11,6 +11,7 @@ using namespace std;
 //main
 int main(){
     initialiseboard();
+    initOpeningBook();
 
     while(true){
         printboard();
@@ -32,11 +33,16 @@ int main(){
             cout << "Enter move: ";
             if (!(cin >> move)) break;   // input closed (EOF) - stop instead of looping forever
 
+            bool before = whitetomove;
             makemoves(move);
+            if (whitetomove != before) recordMove(move);   // only record moves that were accepted
         }
         else{
             cout << "Ai is thinking...\n";
-            Move aiMove = getBestMove(false, 3);
+            Move aiMove;
+            if (getBookMove(false, aiMove)) cout << "Book move\n";
+            else aiMove = getBestMove(false, 3);
+            recordMove(moveToString(aiMove));
             make_Move(aiMove);
             if(ispromotion(aiMove)) promotePawn(aiMove);
             whitetomove = !whitetomove;
