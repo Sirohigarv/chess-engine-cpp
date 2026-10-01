@@ -30,8 +30,8 @@ int main(){
         {
             string move;
             cout << "Enter move: ";
-            cin >> move;
- 
+            if (!(cin >> move)) break;   // input closed (EOF) - stop instead of looping forever
+
             makemoves(move);
         }
         else{
@@ -44,4 +44,4 @@ int main(){
     }
 
     return 0;
-}     
+}

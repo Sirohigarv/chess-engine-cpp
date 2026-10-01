@@ -5,7 +5,7 @@ using namespace std;
 #include "board.h"
 #include "notation.h"
 #include "check.h"
-
+    
 
 
 Move createMove(const string &move) {
@@ -34,9 +34,9 @@ Move createMove(const string &move) {
         m.isCastle = true;
     if (m.movedPiece == 'k' && fr == 0 && fc == 4 && (tc == 6 || tc == 2))
         m.isCastle = true;
-    
 
-	return m;
+
+    return m;
 }
 void make_Move(Move m) {
     
@@ -59,6 +59,8 @@ void make_Move(Move m) {
     
     
 	board[m.tr][m.tc] = m.movedPiece;
+    if (m.movedPiece == 'K') { whiteKingRow = m.tr; whiteKingCol = m.tc; }
+    if (m.movedPiece == 'k') { blackKingRow = m.tr; blackKingCol = m.tc; }
 	board[m.fr][m.fc] = '.';
 	
 	//castling also move rook
@@ -97,6 +99,8 @@ void make_Move(Move m) {
 void undoMove(Move m) {
 	board[m.fr][m.fc] = m.movedPiece;
 	board[m.tr][m.tc] = m.capturedPiece;
+    if (m.movedPiece == 'K') { whiteKingRow = m.fr; whiteKingCol = m.fc; }
+    if (m.movedPiece == 'k') { blackKingRow = m.fr; blackKingCol = m.fc; }
 	
 	if (m.isEnPassant) {
         int capturedRow = (m.movedPiece == 'P') ? m.tr + 1 : m.tr - 1;
@@ -335,6 +339,14 @@ void promotePawn(const Move &m){
 
 //make moves
 void makemoves(const string& move) {
+    // validate input before indexing the board (e.g. "e2e4")
+    if (move.size() < 4 ||
+        move[0] < 'a' || move[0] > 'h' || move[1] < '1' || move[1] > '8' ||
+        move[2] < 'a' || move[2] > 'h' || move[3] < '1' || move[3] > '8') {
+        cout << "Invalid input. Use the format e2e4.\n";
+        return;
+    }
+
     int fr,fc,tr,tc;
     parseMove(move, fr, fc, tr, tc);
 
@@ -346,7 +358,7 @@ void makemoves(const string& move) {
     string moveStr = indexToSquare(fr,fc) + indexToSquare(tr,tc);
     if (!pseudoLegal(moveStr)) { cout << "Illegal move.\n"; return; }
 
-    Move m = createMove(move);
+    Move m = createMove(moveStr);
     make_Move(m);
 
     if (iskingincheck(whitetomove)) {

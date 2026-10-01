@@ -182,21 +182,10 @@ bool isSquareAttacked(int row, int col, bool byWhite)
     return false;
 }
 
-bool iskingincheck(bool white)
-{
-    string kings = findking();
-    string kingsquare;
-    if(white)
-    {
-        kingsquare = kings.substr(0,2);
-    }
-    else
-    {
-        kingsquare = kings.substr(2,2);
-    }
-    auto [row,col] = squareToIndex(kingsquare);
-
-    return isSquareAttacked(row,col,!white); //by enemy piece, !white
+bool iskingincheck(bool white) {
+    int row = white ? whiteKingRow : blackKingRow;
+    int col = white ? whiteKingCol : blackKingCol;
+    return isSquareAttacked(row, col, !white);
 }
 
 int gameStatus() {

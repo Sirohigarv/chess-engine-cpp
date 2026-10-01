@@ -9,6 +9,8 @@ extern bool whiteKingsideCastle;
 extern bool whiteQueensideCastle;
 extern bool blackKingsideCastle;
 extern bool blackQueensideCastle;
+extern int whiteKingRow, whiteKingCol;
+extern int blackKingRow, blackKingCol;
 
 extern int enPassantRow;
 extern int enPassantCol;

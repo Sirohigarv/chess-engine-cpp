@@ -1,38 +1,74 @@
 #include <SFML/Graphics.hpp>
+
 #include "board.h"
 #include "moves.h"
 #include "notation.h"
+#include "engine.h"
+
+#include <cctype>
+#include <iostream>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
-#include "engine.h"
-//written completely by claude newmain.cpp
 
-const int TILE_SIZE = 80;
-const int BOARD_SIZE = 8;
+namespace {
+
+constexpr int   TILE_SIZE    = 80;
+constexpr int   BOARD_SIZE   = 8;
+constexpr float TILE_F       = static_cast<float>(TILE_SIZE);
+constexpr int   SEARCH_DEPTH = 3;
+
+
+constexpr bool HUMAN_IS_WHITE = true;
+
+sf::Vector2f squareTopLeft(int row, int col) {
+    return { col * TILE_F, row * TILE_F };
+}
+
+sf::Vector2f squareCentre(int row, int col) {
+    return { col * TILE_F + TILE_F / 2.f, row * TILE_F + TILE_F / 2.f };
+}
+
+bool ownsPiece(char piece, bool white) {
+    if (piece == '.') return false;
+    const auto c = static_cast<unsigned char>(piece);
+    return white ? std::isupper(c) != 0 : std::islower(c) != 0;
+}
+
+std::vector<Move> movesFromSquare(bool white, int row, int col) {
+    std::vector<Move> out;
+    for (const Move& m : generateLegalMoves(white))
+        if (m.fr == row && m.fc == col)
+            out.push_back(m);
+    return out;
+}
+
+} 
 
 int main() {
     sf::RenderWindow window(
-        sf::VideoMode({TILE_SIZE * BOARD_SIZE, TILE_SIZE * BOARD_SIZE}),
-        "Chess Engine"
-    );
+        sf::VideoMode({ static_cast<unsigned int>(TILE_SIZE * BOARD_SIZE),
+                        static_cast<unsigned int>(TILE_SIZE * BOARD_SIZE) }),
+        "Chess Engine");
+    window.setFramerateLimit(60);
 
-    sf::Color light(237, 220, 255);
-sf::Color dark(101, 55, 155);
-    sf::Color highlight(255, 255, 0, 100);  // yellow highlight
-    sf::Color legalDot(0, 0, 0, 80);        // legal move dot
+    const sf::Color light(237, 220, 255);
+    const sf::Color dark(101, 55, 155);
+    const sf::Color highlight(255, 255, 0, 100);
+    const sf::Color legalDot(0, 0, 0, 80);
 
-    sf::RectangleShape tile(sf::Vector2f(TILE_SIZE, TILE_SIZE));
-    sf::RectangleShape highlightTile(sf::Vector2f(TILE_SIZE, TILE_SIZE));
+    sf::RectangleShape tile({ TILE_F, TILE_F });
+
+    sf::RectangleShape highlightTile({ TILE_F, TILE_F });
     highlightTile.setFillColor(highlight);
 
     sf::CircleShape dot(12.f);
     dot.setFillColor(legalDot);
-    dot.setOrigin({12.f, 12.f});
+    dot.setOrigin({ 12.f, 12.f });
 
-    // Load textures
-    map<char, sf::Texture> textures;
-    map<char, string> files = {
+    
+    const std::map<char, std::string> files = {
         {'K', "pieces/wK.png"}, {'Q', "pieces/wQ.png"},
         {'R', "pieces/wR.png"}, {'B', "pieces/wB.png"},
         {'N', "pieces/wN.png"}, {'P', "pieces/wP.png"},
@@ -41,133 +77,147 @@ sf::Color dark(101, 55, 155);
         {'n', "pieces/bN.png"}, {'p', "pieces/bP.png"}
     };
 
-    for (auto& [ch, path] : files) {
-        if (!textures[ch].loadFromFile(path)) return -1;
+    std::map<char, sf::Texture> textures;
+    for (const auto& [ch, path] : files) {
+        sf::Texture tex;
+        if (!tex.loadFromFile(path)) {
+            std::cerr << "Failed to load texture: " << path
+                      << "\nRun the exe from the folder that contains pieces/.\n";
+            return -1;
+        }
+        tex.setSmooth(true);           
+        textures.emplace(ch, std::move(tex));
     }
 
     initialiseboard();
 
-    // Selection state
+    
     bool pieceSelected = false;
-    int selectedRow = -1, selectedCol = -1;
-    vector<Move> legalMoves;
+    int  selectedRow = -1, selectedCol = -1;
+    std::vector<Move> legalMoves;
+
+    bool engineOwesMove = false;   
+    bool gameOver       = false;
 
     while (window.isOpen()) {
-        while (auto event = window.pollEvent()) {
-            if (event->is<sf::Event::Closed>())
+
+        
+        while (const std::optional event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
                 window.close();
+                break;
+            }
 
-            if (const auto* mouseEvent = event->getIf<sf::Event::MouseButtonPressed>()) {
-                if (mouseEvent->button == sf::Mouse::Button::Left) {
-                    int col = mouseEvent->position.x / TILE_SIZE;
-                    int row = mouseEvent->position.y / TILE_SIZE;
+            if (gameOver || engineOwesMove) continue;
+            if (whitetomove != HUMAN_IS_WHITE) continue;
 
-                    if (row < 0 || row >= 8 || col < 0 || col >= 8) continue;
+            const auto* click = event->getIf<sf::Event::MouseButtonPressed>();
+            if (!click || click->button != sf::Mouse::Button::Left) continue;
 
-                    char clicked = board[row][col];
+            // integer division rounds toward zero, so reject negatives before dividing
+            if (click->position.x < 0 || click->position.y < 0) continue;
+            const int col = click->position.x / TILE_SIZE;
+            const int row = click->position.y / TILE_SIZE;
+            if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) continue;
 
-                    if (!pieceSelected) {
-                        // Select a piece
-                        if (clicked != '.' &&
-                            (whitetomove ? isupper(clicked) : islower(clicked))) {
-                            pieceSelected = true;
-                            selectedRow = row;
-                            selectedCol = col;
-                            // Get legal moves for this piece
-                            legalMoves.clear();
-                            vector<Move> all = generateLegalMoves(whitetomove);
-                            for (auto& m : all)
-                                if (m.fr == row && m.fc == col)
-                                    legalMoves.push_back(m);
-                        }
-                    } else {
-                        // Try to move
-                        bool moved = false;
-                        for (auto& m : legalMoves) {
-                            if (m.tr == row && m.tc == col) {
-                                make_Move(m);
-                            if (ispromotion(m)) promotePawn(m);
-                                whitetomove = !whitetomove;  // now black's turn
+            const char clicked = board[row][col];
 
-                         // AI plays black
-                            if (!whitetomove) {
-                                Move aiMove = getBestMove(false, 3);
-                                make_Move(aiMove);
-                            if (ispromotion(aiMove)) promotePawn(aiMove);
-                                whitetomove = !whitetomove;  // back to white
-                    }
-
-        moved = true;
-        break;
-    }
-}
-
-                        // Deselect or select new piece
-                        pieceSelected = false;
-                        selectedRow = -1;
-                        selectedCol = -1;
-                        legalMoves.clear();
-
-                        // If clicked own piece without moving, select it
-                        if (!moved && clicked != '.' &&
-                            (whitetomove ? isupper(clicked) : islower(clicked))) {
-                            pieceSelected = true;
-                            selectedRow = row;
-                            selectedCol = col;
-                            vector<Move> all = generateLegalMoves(whitetomove);
-                            for (auto& m : all)
-                                if (m.fr == row && m.fc == col)
-                                    legalMoves.push_back(m);
-                        }
-                    }
+            if (!pieceSelected) {
+                if (ownsPiece(clicked, whitetomove)) {
+                    pieceSelected = true;
+                    selectedRow   = row;
+                    selectedCol   = col;
+                    legalMoves    = movesFromSquare(whitetomove, row, col);
                 }
+                continue;
+            }
+
+            
+            bool moved = false;
+            for (const Move& m : legalMoves) {
+                if (m.tr == row && m.tc == col) {
+                    make_Move(m);
+                    if (ispromotion(m)) promotePawn(m);
+                    whitetomove    = !whitetomove;
+                    moved          = true;
+                    engineOwesMove = true;
+                    break;
+                }
+            }
+
+            pieceSelected = false;
+            selectedRow   = -1;
+            selectedCol   = -1;
+            legalMoves.clear();
+
+            
+            if (!moved && ownsPiece(clicked, whitetomove)) {
+                pieceSelected = true;
+                selectedRow   = row;
+                selectedCol   = col;
+                legalMoves    = movesFromSquare(whitetomove, row, col);
             }
         }
 
-        window.clear();
+        if (!window.isOpen()) break;
 
-        // Draw board
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                bool isLight = (row + col) % 2 == 0;
-                tile.setFillColor(isLight ? light : dark);
-                tile.setPosition({(float)(col * TILE_SIZE), (float)(row * TILE_SIZE)});
+        
+        window.clear(sf::Color::Black);
+
+        for (int row = 0; row < BOARD_SIZE; ++row) {
+            for (int col = 0; col < BOARD_SIZE; ++col) {
+                tile.setFillColor(((row + col) % 2 == 0) ? light : dark);
+                tile.setPosition(squareTopLeft(row, col));
                 window.draw(tile);
             }
         }
 
-        // Draw selected highlight
         if (pieceSelected) {
-            highlightTile.setPosition({(float)(selectedCol * TILE_SIZE),
-                                       (float)(selectedRow * TILE_SIZE)});
+            highlightTile.setPosition(squareTopLeft(selectedRow, selectedCol));
             window.draw(highlightTile);
 
-            // Draw legal move dots
-            for (auto& m : legalMoves) {
-                dot.setPosition({m.tc * TILE_SIZE + TILE_SIZE / 2.f,
-                                 m.tr * TILE_SIZE + TILE_SIZE / 2.f});
+            for (const Move& m : legalMoves) {
+                dot.setPosition(squareCentre(m.tr, m.tc));
                 window.draw(dot);
             }
         }
 
-        // Draw pieces
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) {
-                char piece = board[row][col];
-                if (piece != '.') {
-                    sf::Sprite sprite(textures[piece]);
-                    sf::Vector2u texSize = textures[piece].getSize();
-                    float scaleX = (float)TILE_SIZE / texSize.x;
-                    float scaleY = (float)TILE_SIZE / texSize.y;
-                    sprite.setScale({scaleX, scaleY});
-                    sprite.setPosition({(float)(col * TILE_SIZE),
-                                        (float)(row * TILE_SIZE)});
-                    window.draw(sprite);
-                }
+        for (int row = 0; row < BOARD_SIZE; ++row) {
+            for (int col = 0; col < BOARD_SIZE; ++col) {
+                const char piece = board[row][col];
+                if (piece == '.') continue;
+
+                const auto it = textures.find(piece);
+                if (it == textures.end()) continue;   
+
+                sf::Sprite sprite(it->second);        
+                const sf::Vector2u texSize = it->second.getSize();
+                sprite.setScale({ TILE_F / texSize.x, TILE_F / texSize.y });
+                sprite.setPosition(squareTopLeft(row, col));
+                window.draw(sprite);
             }
         }
 
         window.display();
+
+        if (engineOwesMove && !gameOver) {
+            engineOwesMove = false;
+
+            if (generateLegalMoves(whitetomove).empty()) {
+                gameOver = true;
+                window.setTitle("Chess Engine - game over");
+            } else {
+                const Move best = getBestMove(whitetomove, SEARCH_DEPTH);
+                make_Move(best);
+                if (ispromotion(best)) promotePawn(best);
+                whitetomove = !whitetomove;
+
+                if (generateLegalMoves(whitetomove).empty()) {
+                    gameOver = true;
+                    window.setTitle("Chess Engine - game over");
+                }
+            }
+        }
     }
 
     return 0;

@@ -14,12 +14,16 @@ bool whiteKingsideCastle  = true;
 bool whiteQueensideCastle = true;
 bool blackKingsideCastle  = true;
 bool blackQueensideCastle = true;
+int whiteKingRow, whiteKingCol;
+int blackKingRow, blackKingCol;
 
 int enPassantRow = -1;
 int enPassantCol = -1;
 
 void initialiseboard()
 {
+    whiteKingRow = 7; whiteKingCol = 4;
+    blackKingRow = 0; blackKingCol = 4;
     for(int i=0;i<8;i++)
     {
         for(int j= 0;j<8;j++ )
